@@ -55,6 +55,17 @@ except:
     with io.open('README.md', encoding='utf-8') as f:
         long_description = f.read()
 
+if sys.platform=='win32':
+    extra_compile_args=['/Oy',
+                        '/DCDM_PY_PARSER_VERSION=\\"' + version + '\\"',
+                        '/Ox',
+                       ]
+else:
+    extra_compile_args=['-Wno-unused', '-fomit-frame-pointer',
+                        '-DCDM_PY_PARSER_VERSION="' + version + '"',
+                        '-ffast-math',
+                        '-O2',
+                        '-std=c99']
 
 # install_requires=['pypandoc'] could be added but really it needs to only
 # at the time of submitting a package to Pypi so it is excluded from the
@@ -80,8 +91,4 @@ setup(name='cdmpyparser',
        py_modules=['cdmpyparser'],
        ext_modules=[Extension('_cdmpyparser',
                               ['src/cdmpyparser.c'],
-                              extra_compile_args=['-Wno-unused', '-fomit-frame-pointer',
-                                                  '-DCDM_PY_PARSER_VERSION="' + version + '"',
-                                                  '-ffast-math',
-                                                  '-O2',
-                                                  '-std=c99'])])
+                              extra_compile_args=extra_compile_args)])

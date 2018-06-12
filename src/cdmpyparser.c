@@ -41,17 +41,17 @@
 #define MAX_DOCSTRING_SIZE          65535
 #define MAX_ERROR_MSG_SIZE          32768
 
-
+#if _MSC_VER && !__INTEL_COMPILER  //Intel compiler also defines _MSC_VER for some reason
+extern  __declspec(dllimport) grammar  _PyParser_Grammar;  /* From graminit.c */
+#else
 extern grammar      _PyParser_Grammar;  /* From graminit.c */
-
+#endif
 
 #if PY_MAJOR_VERSION == 3
     #define PyInt_FromLong              PyLong_FromLong
     #define PyString_FromString         PyUnicode_FromString
     #define PyString_FromStringAndSize  PyUnicode_FromStringAndSize
 #endif
-
-
 
 /* Holds the currently analysed scope */
 enum Scope {
@@ -1724,7 +1724,12 @@ parse_input( char *                         buffer,
         int         totalLines = getTotalLines( tree );
 
         assert( totalLines >= 0 );
+    #if _MSC_VER && !__INTEL_COMPILER
+        //MSVC's _alloca works unpredictably, unfortunately.
+        int         *lineShifts=(int *)malloc( (totalLines + 1 )*sizeof(lineShifts[0]) );
+    #else
         int         lineShifts[ totalLines + 1 ];
+    #endif
 
         calculateLineShifts( buffer, lineShifts );
 
@@ -1738,6 +1743,9 @@ parse_input( char *                         buffer,
         assert( root->n_type == file_input );
         walk( root, callbacks, -1, GLOBAL_SCOPE, NULL, 0, lineShifts, 0 );
         PyNode_Free( tree );
+        #if _MSC_VER && !__INTEL_COMPILER
+            free(lineShifts);
+        #endif
     }
 
     Py_INCREF( Py_None );
@@ -1813,7 +1821,13 @@ py_modinfo_from_file( PyObject *  self,     /* unused */
 
     if ( st.st_size > 0 )
     {
-        char            buffer[st.st_size + 2];
+        #if _MSC_VER && !__INTEL_COMPILER
+        //MSVC's _alloca works unpredictably, unfortunately.
+            char           *buffer=(char *)malloc( (st.st_size + 2)*sizeof(buffer[0]) );
+        #else
+            char            buffer[st.st_size + 2];
+        #endif
+        
         int             elem = fread( buffer, st.st_size, 1, f );
         if ( elem != 1 )
         {
@@ -1828,6 +1842,9 @@ py_modinfo_from_file( PyObject *  self,     /* unused */
         fclose( f );
 
         retValue = parse_input( buffer, fileName, & callbacks );
+        #if _MSC_VER && !__INTEL_COMPILER
+            free(buffer);
+        #endif
     }
     else
     {
